@@ -29,6 +29,7 @@ https://zenodo.org/records/18714621
 If you use this dataset or the provided scripts, please cite:
 
 @misc{piana2026briscdatasetchannelmeasurements,
+
       title={BRISC: A Dataset of Channel Measurements at 5 GHz With a Reflective Intelligent Surface},
 
       author={Mattia Piana and Giovanni Angelo Alghisi and Anna Valeria Guglielmi and Giovanni Perin and Francesco Gringoli and Stefano Tomasin},
@@ -40,7 +41,7 @@ If you use this dataset or the provided scripts, please cite:
       archivePrefix={arXiv},
 
       primaryClass={eess.SP},
-      
+
       url={https://arxiv.org/abs/2602.21102}, 
 }
 
