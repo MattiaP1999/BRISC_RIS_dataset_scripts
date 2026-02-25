@@ -3,6 +3,7 @@ from scipy.linalg import khatri_rao
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 
+# Function to convert hex string to matrix representing the RIS configuration
 def hex_to_matrix(hex_string, N=16):
     # Remove the '!0X' prefix if present
     if hex_string.startswith('!0X'):
@@ -14,6 +15,7 @@ def hex_to_matrix(hex_string, N=16):
     # Convert to numpy array and reshape
     arr = np.array(list(bin_str), dtype=int).reshape(N, N)
     return arr
+# Function that estimates the Khatri-Rao product via Ridge Regression (LM)
 def estimate_katri_E_full(ch_meas, conf_matr, lam=1e-5):
     CtC = conf_matr.T @ conf_matr
     reg = lam * np.eye(CtC.shape[0])
@@ -21,12 +23,8 @@ def estimate_katri_E_full(ch_meas, conf_matr, lam=1e-5):
     E_hat = ch_meas @ inv_reg
     return E_hat
 
+# Function that estimates the Khatri-Rao product with bias (with regularizer to prevent inversion explosion)
 def estimate_katri_E_full_bias(ch_meas, conf_matr, lam=1e-5):
-    """
-    Ridge regression:
-    ch_meas ≈ E @ conf_matr + b
-    """
-
     # Augment with bias
     ones = np.ones((1, conf_matr.shape[1]))
     X = np.vstack([conf_matr, ones])   # (N_feat+1, N_samples)
@@ -40,46 +38,7 @@ def estimate_katri_E_full_bias(ch_meas, conf_matr, lam=1e-5):
     b_hat = W[:, -1]
 
     return E_hat, b_hat
-
-# Stack a and 1 for the intercept
-def estim_lsq(a,h):
-    A = np.vstack([a, np.ones_like(a)]).T
-
-    # Least squares solution: [x, b]
-    estim, _, _, _ = np.linalg.lstsq(A, h, rcond=None)
-    h_tilde, b_est = estim
-
-    #print("Estimated x:", h_tilde)
-    #print("Estimated b:", b_est)
-    return h_tilde, b_est
-def estim_coeff(vec_ones,theta):
-    coeff = []
-    for el in vec_ones:
-        num_minus = 4-el
-        coeff.append(el+ num_minus*np.exp(1j*theta))
-    return coeff
-
-
-def plot_mod_phase(channel):
-    _, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-
-    # Magnitude plot
-    ax1.plot(np.abs(channel), marker='o')
-    ax1.set_title('Magnitude of Channel Coefficients')
-    ax1.set_xlabel('Index')
-    ax1.set_ylabel('Magnitude')
-    ax1.grid(True)
-
-    # Phase plot
-    ax2.plot(np.angle(channel, deg=True), marker='o', color='orange')
-    ax2.set_title('Phase of Channel Coefficients')
-    ax2.set_xlabel('Index')
-    ax2.set_ylabel('Phase (degrees)')
-    ax2.grid(True)
-
-    plt.tight_layout()
-    plt.show()
-
+# Function to display the RIS configuration matrix as an image
 def display_matrix(matrix, idx,ax=None):
     if ax is None:
         plt.figure(figsize=(4, 4))

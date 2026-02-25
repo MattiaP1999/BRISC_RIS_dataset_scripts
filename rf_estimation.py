@@ -15,10 +15,12 @@ from torch.utils.data import random_split
 
 num_sbc = 242 # Number of subcarrier to select
 perform_permutation = True
-for position in [3,4,5,6,7,8,9]:
+positions = [1,2,3,4,5,6,7,8,9]
+
+for position in positions:
     # Load data
-    data_file = f"data/antennaLog_pos{position}.mat" # Data file
-    conf_file= f"data/configurations_pos_{position}.txt" # Load the configurations list (n.b.they are are hex strings attainable from the data_file)
+    data_file = f"../RIS_Dataset_UNIPD_UNIBS/data/antennaLog_pos{position}.mat" # Replace with your actual data file path
+    conf_file= f"../RIS_Dataset_UNIPD_UNIBS/data/configurations_pos_{position}.txt" # Replace with your actual config file path
     with h5py.File(data_file, 'r') as f:
         csi = f['csi'][:]
     parse_csi = csi['real'] + 1j * csi['imag']
@@ -66,11 +68,9 @@ for position in [3,4,5,6,7,8,9]:
 
     channels_np_concat = np.vstack((channels_np.real, channels_np.imag))
 
-
-
-    n_test = 3000
-    n_val = 1500
-    num_seeds = 3
+    n_test = 3000 # Number of test samples
+    n_val = 1500 # Number of validation samples
+    num_seeds = 3 # Number of random seeds
 
     # Random shuffle conf_from_data and channels_np_concat except the last n_test samples
     indices = np.arange(conf_from_data.shape[1] - n_test)
@@ -145,23 +145,25 @@ for position in [3,4,5,6,7,8,9]:
             # ---------------------------
             # Test evaluation
             # ---------------------------
-            y_pred_np = best_model.predict(X_test)
-            y_true_np = y_test
+            y_pred_np = best_model.predict(X_test) 
+            y_true_np = y_test # Assignment for better readability
 
-            n_channels = y_pred_np.shape[1] // 2
+            n_channels = y_pred_np.shape[1] // 2 # Number of channels is half the number of outputs (real and imaginary parts)
 
+            # Convert to complex representation
             real_part = y_pred_np[:, :n_channels]
             imag_part = y_pred_np[:, n_channels:]
             channels_pred_complex = (real_part + 1j * imag_part).T
-            channels_pred_complex = channels_pred_complex * np.sqrt(var_ch) + mean_ch
+            channels_pred_complex = channels_pred_complex * np.sqrt(var_ch) + mean_ch # Undo normalization
 
             real_part = y_true_np[:, :n_channels]
             imag_part = y_true_np[:, n_channels:]
             channels_true_complex = (real_part + 1j * imag_part).T
-            channels_true_complex = channels_true_complex * np.sqrt(var_ch) + mean_ch
+            channels_true_complex = channels_true_complex * np.sqrt(var_ch) + mean_ch # Undo normalization
 
             channels_true_complex = channels_true_complex.to('cpu').numpy()
             
+            # Evaluate the normalized MSE
             num_meas_test = channels_true_complex.shape[1]
             squared_norm_error = np.linalg.norm(channels_pred_complex-channels_true_complex)**2/num_meas_test
             average_ch_measured = np.linalg.norm(channels_true_complex)**2/num_meas_test

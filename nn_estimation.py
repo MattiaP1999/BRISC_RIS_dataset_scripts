@@ -13,6 +13,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from torch.utils.data import random_split
 from torch.utils.data import Subset
 
+# Define the regression neural network architecture
 class RegressionNN(nn.Module):
     def __init__(self, input_dim, output_dim):
         super().__init__()
@@ -121,36 +122,24 @@ def trainModel(
 
     return model, train_losses, val_losses
 
-# Set current directory
 
-
-simulated = False
+num_sbc = 242 # Set the number of subcarriers
 perform_permutation = True
-for position in [9]: #1,2,3,4,5,6,7,8,9
+positions = [1,2,3,4,5,6,7,8,9]
+for position in positions: #
     #filename = r"C:\Users\mattia\Desktop\linearity verification\data\antennaLog_pos5.mat"
-    data_file = f"data/antennaLog_pos{position}.mat"
-    conf_file= f"data/configurations_pos_{position}.txt"
-
-    if not simulated:
-        with h5py.File(data_file, 'r') as f:
-            csi = f['csi'][:]
-        parse_csi = csi['real'] + 1j * csi['imag']
-    else:
-        with gzip.open("data/channel_response_simulated_L_10.pkl.gz", "rb") as f:
-            data = pkl.load(f)
-            parse_csi = data.get("channel_reponse")
-            g_channel = data.get("g")
-            h_channel = data.get("h")
-
+    data_file = f"data/antennaLog_pos{position}.mat" # Replace with your actual data file path
+    conf_file= f"data/configurations_pos_{position}.txt"# Replace with your actual config file path
+    with h5py.File(data_file, 'r') as f:
+        csi = f['csi'][:]
+    parse_csi = csi['real'] + 1j * csi['imag']
     parse_csi = parse_csi.transpose() # Transpose to get correct shape
-
     configurations = []
     with open(conf_file, "r") as f:
         for line in f:
             configurations.append(line.strip())
 
     configurations = np.array(configurations)
-    num_sbc = 242
     subcarrier_list = np.arange(0, num_sbc, 1, dtype=np.int32)
     num_sbc_selected = len(subcarrier_list)
     parse_csi = parse_csi[subcarrier_list,:]
@@ -166,9 +155,9 @@ for position in [9]: #1,2,3,4,5,6,7,8,9
 
     conf_from_data = np.array(conf_from_data)
     conf_from_data = conf_from_data.transpose() # check if transpose is needed
-
     tot_conf = np.int32(unique_configs.shape[0])
     channels = []
+    # Average channels corresponding to the same configuration
     channels_np = np.zeros((num_sbc_selected, tot_conf), dtype=complex)
     for i in range(tot_conf):
         indexes_conf = np.where(configurations== ordered_unique_configs[i])[0]
@@ -186,7 +175,9 @@ for position in [9]: #1,2,3,4,5,6,7,8,9
     channels_np_concat = np.vstack((channels_np.real, channels_np.imag))
 
     # Random shuffle conf_from_data and channels_np_concat # except the last n_test samples
-    n_test = 3000 
+    n_test = 3000
+    num_seeds = 3
+    n_val = 1500  
     indices = np.arange(conf_from_data.shape[1] - n_test)
     if perform_permutation:
         np.random.shuffle(indices)
@@ -198,8 +189,7 @@ for position in [9]: #1,2,3,4,5,6,7,8,9
     y = torch.from_numpy(channels_np_concat.T).float()   # (samples, outputs)
     dataset = TensorDataset(X, y)
 
-    num_seeds = 3
-    n_val = 1500 #n_total - n_train - n_val
+
     train_samples_list = np.logspace(np.log10(300), np.log10(3000), 10, dtype=int)
     n_total = len(dataset)
     mean_errors_db = np.zeros((num_seeds, len(train_samples_list)))
@@ -323,5 +313,3 @@ for position in [9]: #1,2,3,4,5,6,7,8,9
             print(f"Mean relative error (dB) over test set: {mean_error:.4f} dB")
             mean_errors_db[idx_seed, idx_n_train] = mean_error
             np.savetxt(f"./results/nn_results_extra_pos_{position}.csv", mean_errors_db, delimiter=",")
-
-# Save mean error to csv file

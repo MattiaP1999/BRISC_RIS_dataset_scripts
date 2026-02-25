@@ -6,55 +6,49 @@ import pickle as pkl
 import gzip
 import my_lib as my_lib
 
+
 # Set current directory
-
-
-simulated = False
-positions = [1, 2, 3,4,5,6,7,8,9]
-perform_permutation = True
-use_bias = True
+use_bias = True # Set to True if want to include bias (LMB)
+num_sbc = 242 # Number of subcarrier to select
+perform_permutation = True # Set to True if want to perform permutation of the dataset
+positions = [1,2,3,4,5,6,7,8,9]
 
 for position in positions:
-    #filename = r"C:\Users\mattia\Desktop\linearity verification\data\antennaLog_pos5.mat"
-    data_file = f"data/antennaLog_pos{position}.mat"
-    conf_file= f"data/configurations_pos_{position}.txt"
+    # Load data
+    data_file = f"../RIS_Dataset_UNIPD_UNIBS/data/antennaLog_pos{position}.mat" # Replace with your actual data file path
+    conf_file= f"../RIS_Dataset_UNIPD_UNIBS/data/configurations_pos_{position}.txt" # Replace with your actual config file path
 
-    if not simulated:
-        with h5py.File(data_file, 'r') as f:
-            csi = f['csi'][:]
-        parse_csi = csi['real'] + 1j * csi['imag']
-    else:
-        with gzip.open("data/channel_response_simulated_L_10.pkl.gz", "rb") as f:
-            data = pkl.load(f)
-            parse_csi = data.get("channel_reponse")
-            g_channel = data.get("g")
-            h_channel = data.get("h")
-
+    with h5py.File(data_file, 'r') as f:
+        csi = f['csi'][:]
+    parse_csi = csi['real'] + 1j * csi['imag']
     parse_csi = parse_csi.transpose() # Transpose to get correct shape
 
+    # Get configurations
     configurations = []
     with open(conf_file, "r") as f:
         for line in f:
             configurations.append(line.strip())
 
     configurations = np.array(configurations)
-    num_sbc = 242
     subcarrier_list = np.arange(0, num_sbc, 1, dtype=np.int32)
     num_sbc_selected = len(subcarrier_list)
     parse_csi = parse_csi[subcarrier_list,:]
 
+    # Select unique configurations
     unique_configs, idx = np.unique(configurations, return_index=True)
     ordered_unique_configs = unique_configs[np.argsort(idx)]
     conf_from_data = []
     for idx,conf in enumerate(ordered_unique_configs):
         matrix_converted = my_lib.hex_to_matrix(conf, N=16)
+        # Uncomment to plot desired RIS configurations
         #if(idx>520 and idx<536):
             #display_matrix(matrix_converted,idx)
         conf_from_data.append(matrix_converted.flatten('F')) # check if 'F' order is needed
 
     conf_from_data = np.array(conf_from_data)
-    conf_from_data = conf_from_data.transpose() # check if transpose is needed
+    conf_from_data = conf_from_data.transpose()
 
+    # Average the CSI over the measurements corresponding to the same configuration
     tot_conf = np.int32(unique_configs.shape[0])
     channels = []
     channels_np = np.zeros((num_sbc_selected, tot_conf), dtype=complex)
@@ -65,22 +59,19 @@ for position in positions:
         channels_np[:,i] = ch_t_mean
     print(channels_np.shape)
 
-        # Random shuffle conf_from_data and channels_np_concat # except the last n_test samples
-    n_test = 3000 
+    # Random shuffle conf_from_data and channels_np_concat # except the last n_test samples
+    n_test = 3000 # Number of test samples
+    num_seeds = 3 # Number of random seeds 
+    n_val = 1500 # Number of validation samples
     indices = np.arange(conf_from_data.shape[1] - n_test)
     if perform_permutation:
         np.random.shuffle(indices)
     tot_indices = np.concatenate((indices, np.arange(conf_from_data.shape[1] - n_test, conf_from_data.shape[1])))
     conf_from_data = conf_from_data[:,tot_indices]
     channels_np_concat = channels_np[:,tot_indices]
-
-    num_seeds = 3
-    n_val = 1500
-    train_samples_list = np.logspace(np.log10(300), np.log10(3000), 10, dtype=int)
+    train_samples_list = np.logspace(np.log10(300), np.log10(3000), 10, dtype=int) # Number of training samples
     n_total = channels_np.shape[1]
     mean_errors_db = np.zeros((num_seeds, len(train_samples_list)))
-
-
     for idx_seed in range(num_seeds):
         print(f"Running {idx_seed} simulation:")
         for idx_n_train, n_train in enumerate(train_samples_list):
@@ -95,11 +86,10 @@ for position in positions:
             print("Running simulation with fitting samples:", conf_fit_train.shape[1])
             print("Running simulation with testing samples:", conf_fit_test.shape[1])
 
-            theta = np.deg2rad([92]) # np.deg2rad(np.arange(10, 180, 1)) #20
-            amp = 0.4 #np.linspace(0.1,1,10) #10
+            theta = np.deg2rad([92]) # Phase shift of the RIS elements in degrees
+            amp = 0.4 # Amplitude of the RIS elements
             pred_channels = np.zeros_like(ch_meas_test)
-            E_tot = np.zeros((num_sbc_selected,256),dtype=complex)
-
+            E_tot = np.zeros((num_sbc_selected,256),dtype=complex) # Matrix to store the estimated E (Katri-rao product) for each subcarrier
 
             coeff_train = np.exp(1j*conf_fit_train*theta)
             coeff_train[conf_fit_train != 0] *= amp
