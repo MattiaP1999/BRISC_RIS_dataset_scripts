@@ -8,7 +8,7 @@ import my_lib as my_lib
 
 
 # Set current directory
-use_bias = True # Set to True if want to include bias (LMB)
+use_bias = False # Set to True if want to include bias (LMB)
 num_sbc = 242 # Number of subcarrier to select
 perform_permutation = True # Set to True if want to perform permutation of the dataset
 positions = [1,2,3,4,5,6,7,8,9]
@@ -77,8 +77,8 @@ for position in positions:
         for idx_n_train, n_train in enumerate(train_samples_list):
             train_indices = list(range(0, n_train))
             test_indices  = list(range(n_total - n_test, n_total))
-            conf_fit_train = conf_from_data[:,train_indices]
-            conf_fit_test = conf_from_data[:,test_indices]
+            conf_fit_train = 1-conf_from_data[:,train_indices]
+            conf_fit_test = 1-conf_from_data[:,test_indices]
             ch_meas_fit = channels_np_concat[:,train_indices]
             ch_meas_test = channels_np_concat[:,test_indices]
 
