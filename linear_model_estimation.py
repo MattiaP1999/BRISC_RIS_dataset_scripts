@@ -86,7 +86,7 @@ for position in positions:
             print("Running simulation with fitting samples:", conf_fit_train.shape[1])
             print("Running simulation with testing samples:", conf_fit_test.shape[1])
 
-            theta = np.deg2rad([92]) # Phase shift of the RIS elements in degrees
+            theta = np.deg2rad([180]) # Phase shift of the RIS elements in degrees
             amp = 0.4 # Amplitude of the RIS elements
             pred_channels = np.zeros_like(ch_meas_test)
             E_tot = np.zeros((num_sbc_selected,256),dtype=complex) # Matrix to store the estimated E (Katri-rao product) for each subcarrier
